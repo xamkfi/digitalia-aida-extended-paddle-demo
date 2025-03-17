@@ -13,12 +13,11 @@ import gradio as gr
 import os
 import PIL
 from PIL import Image
-
-
+import paddle
 
 model_path = './models'
 
-ocr = PaddleOCR(lang='latin', det=True, use_angle_cls=True, rec_model_dir=model_path, show_log=False,)
+ocr = PaddleOCR(lang='latin', det=True, use_angle_cls=True, rec_model_dir=model_path, show_log=True,)
 
 def tifftopng(tiffPath, jpgPath):
     # Open the tiff image
@@ -28,11 +27,19 @@ def tifftopng(tiffPath, jpgPath):
     tiff_image.save(jpgPath)
     return jpgPath
 
+def checkForImage(upFile):
+    mime = magic.Magic(mime=True)
+    return mime.from_file(upFile)    
+        
+
 def primaryHandler(upFile): #/tmp/gradio/a2270f1e67eb1b9ceb884cde01ceb85f046f23d9/F1_0058.tif    
+    print("Just a test")
     upFileName = os.path.split(upFile)[1]    
-    mime = checkForImage((upFile))
-    print (mime)
+    print("Handing {}".format(upFileName))
+    mime = checkForImage(upFile)
+    print(mime)
     mimetype, detail = mime.split('/')
+    print("{} {}".format(mimetype, detail))
     if mimetype=="image":
         #if tiff, convert to png before processing
         if detail=="tiff":
@@ -42,11 +49,17 @@ def primaryHandler(upFile): #/tmp/gradio/a2270f1e67eb1b9ceb884cde01ceb85f046f23d
         
         outputimage = PIL.Image.open(upFile)
         #If image try to ocr
+        #Chekc if upfile exists
+        if os.path.isfile(upFile):
+            print("Upfile exists")
+        else:
+            print("Upfile does not exist")
+       
         res = ocr.ocr(upFile, cls=True)        
         print("Image {} opened".format(upFile))
         draw = PIL.ImageDraw.Draw(outputimage)
         rettext = ""
-        #print("Full response : {}".format(res))
+        print("Full response : {}".format(res))
         plaintextResponse = ""
         totalAccuracy = []
         try:
@@ -92,13 +105,11 @@ def primaryHandler(upFile): #/tmp/gradio/a2270f1e67eb1b9ceb884cde01ceb85f046f23d
     return plaintextResponse, avg, textfile, outputimage
 
 
-def checkForImage(upFile):
-    mime = magic.Magic(mime=True)
-    return mime.from_file(upFile)    
-        
+
         
 if __name__ == '__main__':    
     print(gr.__version__)
+    #paddle.utils.run_check()
     snkey = "./snakeoil/snakeoil.key"
     sncert="./snakeoil/snakeoil.crt"
     """
@@ -133,9 +144,10 @@ if __name__ == '__main__':
                 
         
         btn.click(fn=primaryHandler, inputs=inputdata, outputs=[textoutputdata, accuracyOutput, fileDownload, annotated])
+        #btn.click(fn=tempHandler, inputs=inputdata, outputs=[textoutputdata])
         
-    #webui.launch(server_name="0.0.0.0", server_port=8087 )
-    webui.launch(server_name="0.0.0.0", server_port=8087, root_path="/AIDA/extended-paddle-demo", ssl_keyfile=snkey, ssl_certfile=sncert, ssl_verify=False)
+    webui.launch(server_name="0.0.0.0", server_port=8087 )
+    #webui.launch(server_name="0.0.0.0", server_port=8087, root_path="/AIDA/extended-paddle-demo", ssl_keyfile=snkey, ssl_certfile=sncert, ssl_verify=False)
     #demo.launch(server_name="0.0.0.0", server_port=8081, root_path="/ai-demo", ssl_keyfile="./snakeoil/snakeoil.key", ssl_certfile="./snakeoil/snakeoil.crt", ssl_verify=False)
     
 
